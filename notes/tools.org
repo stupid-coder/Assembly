@@ -1,0 +1,56 @@
+#+TITLE: assembly programming tools
+#+AUTHOR: stupid_coder@163.com
+
+* assembly programming tools
+  #+CAPTION: 工具集-bintuils
+  | package   | description                                 |
+  |-----------+---------------------------------------------|
+  | addr2line | 将地址转为文件名和行号                      |
+  | ar        | 创建，修改和抽取文件存档                    |
+  | as        | 汇编文件成目标代码                          |
+  | c++filt   | c++文件解析过滤器，将c++符号转为函数名      |
+  | gprof     | 显示程序profiling信息，即运行信息           |
+  | ld        | 连接器，将目标代码链接到可执行文件          |
+  | nlmconv   | 将目标代码转为 Netware Loadadble Module格式 |
+  | nm        | 显示目标文件中的符号                        |
+  | objcopy   | 复制和转化目标文件                          |
+  | objdump   | 显示目标文件的信息                          |
+  | ranlib    | 生成归档文件内容索引                        |
+  | readelf   | 显示目标文件的ELF格式信息                   |
+  | size      | 显示目标文件或者归档文件的段大小            |
+  | strings   | 显示目标文件中可打印的字符串                |
+  | strip     | 丢弃符号                                    |
+  | windres   | 编译微软的资源文件                          |
+
+* Using the assembly
+  GNU aseembler 为一个命令行程序，而且名称为 GAS, 但是命令行程序为 as。
+  
+  命令行参数如下：
+  #+CAPTION: 命令行参数说明
+  | Parameter            | description                |
+  |----------------------+----------------------------|
+  | -a                   | 设定输出的链表             |
+  | -D                   | 为了以前兼容，现在忽略     |
+  | --defsym             | 在汇编源码之前定义符号和值 |
+  | -f                   | 快速编译，跳过注释和空格   |
+  | --gstabs             | 为每行代码添加debug信息    |
+  | --gstabs+            | 包含特殊的debug信息        |
+  | -I                   | 定义include的目录          |
+  | -J                   | 不用对overflow信号进行报警 |
+  | -K                   | 以前兼容，现在忽略         |
+  | -L                   | 将局部符号保存到信号表中   |
+  | --listing-lhs-width  | 设置输出格式中数据最大宽度 |
+  | --listing-lhs-width2 | 设置输出格式中连续数据最大宽度 |
+  | --listing-rhs-width  | 设置输入源文件中最大宽度       |
+  | --listing-cont-lines | 设置输入行中打印链表的最大数量 |
+  | -o                   | 设置输入的目标文件名           |
+  | -R                   | 将数据段包裹进代码段           |
+  | --statics            | 显示编译的最大空间和时间       |
+  | -v                   | 打印as的版本号                 |
+  | -W                   | 不要显示警告信息               |
+  | --                   | 使用标准输入作为数据源         |
+
+  
+* GNU Linker
+  GNU Linker *ld* 用于将目标文件 object code files 链接成可执行文件或
+  者库文件。

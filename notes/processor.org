@@ -1,0 +1,192 @@
+#+TITLE: 硬件相关知识
+#+OPTIONS: indent
+* 机器组成
+  + Processor :: 系统CPU
+  + System Memory :: 内存
+  + Input Devices :: 输入设备
+  + Output Devices :: 输出设备
+                      
+                      
+  其中所有的元素都通过数据总线(Data Bus)，地址总线(Address Bus)，控制
+  总线(Control Bus)链接在一起。
+  
+  控制总线用于电脑内部的各个组成模块间进行同步。数据总线用于在不同的模
+  块间进行数据传递的。地址总线用来表明数据的内存地址或者存到哪个位置。
+
+* CPU 组成
+  CPU 也由许多模块组成：
+  + Control Unit :: 控制单元
+  + Execution Unit :: 执行单元
+  + Registers :: 寄存器
+  + Flags :: 标识位
+             
+** Control Unit
+   控制数据的读取，指令的读取，送到执行单元中执行：
+   + 指令读取
+   + 指令解析 :: 将指令进行拆分成微指令(micro-operation)
+   + 数据读取
+   + 结果存储
+     
+     
+   大部分的优化技术集中在控制单元中，Intel 使用了 NetBurst技术进行优
+   化:
+   + 指令预处理和解析 :: 使用cache，对数据和指令进行pipeline抽取。L1
+        Cache用于从内存中抽取数据和指令，L2 Cache用于在分支判断后，保
+        存原有pipeline的数据和指令，在分支返回后，可以继续运行
+   + 指令预测 :: 动态数据分析，预估分支逻辑和数据抽取
+   + 顺序无关执行 :: 使用动态分析技术，执行和保存那些与执行顺序无关的
+                     指令。
+   + Retriement
+     
+     
+   
+
+
+** Execution Unit
+   一个CPU可以拥有多个执行单元，用于同时执行指令。
+   每个执行单元由若干个ALU(Arithmetic Logic Unit)组成，这些ALU用于执行
+   不同类型的算术计算功能。
+   
+** Register
+   寄存器，IA32共有如下几种寄存器：
+   + General Purpos :: 8 个 32bits 寄存器，用于存储计算过程中的临时变
+                       量
+   + Segment :: 6 个 16bits 寄存器，用于内存访问
+   + Instruction Pointer :: 1 个 32bits 寄存器，用于指向下一个可执行指
+        令
+   + Floating-Point Data :: 8 个 80bits 寄存器，用于进行浮点运算
+   + Control :: 5 个 32bits 寄存器，用于进行分支判断
+   + Debug :: 8 个 32bits 寄存器，用于debug
+*** General-Puerpose Registers
+    一般寄存器用于在计算过程中存储中间变量。32bits可以兼容16bits的和8位
+    寄存器。AX 表示16bits寄存器，AH 和 AL 表示8bits寄存器。
+    一般寄存器一般的使用地方：
+    | Resgietr | Description        |
+    |----------+--------------------|
+    | EAX      | 用于存储计算结果   |
+    | EBX      | 内存段中数据的指针 |
+    | ECX      | 字符串和循环的计数 |
+    | EDX      | I/O 指针           |
+    | EDI      | 字符串操作的结果数据指针 |
+    | ESI      | 字符串操作的输入数据指针 |
+    | ESP      | 栈指针                   |
+    | EBP      | 栈数据指针               |
+*** Segment Regisetr
+    段寄存器一般用于索引内存中的数据地址，IA32共有3种方法进行内存索引：
+    + Flat Memory Model :: 平面内存模型，即将内存视为一个连续的内存空间，
+         所有的代码、数据都存储在这个内存空间内，地址为线性地址。
+    + Segmented Memory Model :: 段内存模型，将内存分成多组内存段，并且
+         用段寄存器索引该内存段。地址为逻辑地址(logic address),即段地址
+         +偏移地址。
+    + Real-Address Model :: 实地址模型
+         
+         
+    #+CAPTION: 段寄存器用途
+    | Segment Register | Description                        |
+    |------------------+------------------------------------|
+    | CS               | 代码段 Code Segment                |
+    | DS               | 数据段 Data Segment                |
+    | SS               | 栈段  Stack Segment                |
+    | ES               | 额外段寄存器 Extra Segment Pointer |
+    | FS               | Extra Segment Pointer              |
+    | GS               | Extra Segment Pointer              |
+
+    故逻辑地址由 代码段 CS + 偏移地址 EIP 组成。用户代码不能自己修改CS
+    寄存器值。
+
+    SS 栈寄存器用户指向栈寄存器顶，临时数据空间和函数片都由SS指向。
+
+*** Instruction Pointer Register
+    指令指针寄存器EIP，有时也叫程序计数，用来指向下一个待执行的指令指针。
+    用户不能修改EIP寄存器。只能通过跳转的一些命令间接修改EIP寄存器。
+    
+*** Control Register
+    控制寄存器用于决定CPU的工作模式和当前任务执行的特性。
+    #+CAPTION: 控制寄存器说明
+    | Control Register | Description              |
+    |------------------+--------------------------|
+    | CR0              | 决定工作模式和处理器状态 |
+    | CR1              | 保留                     |
+    | CR2              | 内存页出错信息           |
+    | CR3              | 内存页信息               |
+    | CR4              | 处理器特性               |
+
+    控制寄存器中的数据不能直接访问，必须存到一般寄存器中，才可以访问。
+    更改控制寄存器，一样需要通过一般寄存器进行修改后，移动过去。
+**** Flags
+     Flags 用于检测处理器执行是否正确。IA32使用 32bits的 *EFLAGS* 寄存
+     器来保存flags。
+     
+     Flags 基于功能分为3种：
+     + Status Flags :: 状态标识，用于标识算术运算的结果。
+                       #+CAPTION: status flags
+                       | Flag | Bit | Name                  |
+                       |------+-----+-----------------------|
+                       | CF   |   0  | Carry Flag, 进位标识  |
+                       | PF   |   2 | Parity Flag, 奇偶检测 |
+                       | AF   |   4 | Adjust Flag           |
+                       | ZF   |   6 | Zero Flag，结果是否为0      |
+                       | SF   |   7 | Sign Flag，标识结果正负      |
+                       | OF   |  11 | Overflow Flag，结果是否越界  | 
+     + Control Flags :: 控制标识, 控制CPU的一些行为。 *DF* direction
+                        flag， 用于控制字符串的遍历方向。
+     + System Flags :: 系统标识，用于控制系统级别的操作。
+                       #+CAPTION: System Flags
+                       | Flag |       Bit | Name                           |
+                       |------+-----------+--------------------------------|
+                       | TF   |         8 | Trap Flag                      |
+                       | IF   |         9 | Interrupt enable flag          |
+                       | IOPL | 12 and 13 | I/O privilege level flag       |
+                       | NT   |        14 | Nested task flag               |
+                       | RF   |        16 | Resume flag                    |
+                       | VM   |        17 | Virtual-8086 mode flag         |
+                       | AC   |        18 | Alignment check flag           |
+                       | VIF  |        19 | Virtual interrupt flag         |
+                       | VIP  |        20 | Virtual interrupt pending flag |
+                       | ID   |        21 | Identification flag            |
+                       trap flags 设置单步模式，CPU一次只执行一个指令，
+                       等待信号执行下一个命令。
+                       
+                       interrupt enable flag 设置CPU是否相应外部信号。
+                       
+                       I/O privilege field 标识当前任务的IO级别。访问
+                       某个IO的地址，需要小于或者等于IO的级别才能访问。
+                       
+                       nested task flag 标识当前任务是否链接到前一个任
+                       务。
+
+                       resume flag 用户控制CPU如何处理调试模式下的异常
+                       情况
+                       
+                       virtual-8086 flag 标识当前是virtual-8086模型，
+                       、保护模型或者实地址模型
+
+                       aligment check flag 用于标识是否开启内存索引的
+                       对齐检测
+                       
+                       virtual interrupt flag 在虚拟模式下，用来代替IF
+                       
+                       virtual interrupt pending flag 在虚拟内存模式下，
+                       标识interrupt是否能够pendding
+
+                       ID flag 用户标识CPU是否支持 *CPUID* 指令
+
+
+                       
+     
+
+**** EFLAGS 说明
+     #+CAPTION: EFLAGS 说明
+     | Flag | Name                 | 1                       | 0                       |
+     |------+----------------------+-------------------------+-------------------------|
+     | CF   | 进位标志/Carry Flag  | CY/Carry                | NC/No Carray            |
+     | PF   | 奇偶标志/Parity Flag | PE/Parity Event/偶      | PO/Parity Odd/奇        |
+     | AF   | 辅助进步标志         | AC/Auxiliary Carry/进位 | NA/No Auxilliary/无进位 |
+     | ZF   | 零标志/Zero Flag     | ZR/Zero/等于0           | NZ/Not Zero/不等于零    |
+     | SF   | 符号标志/Sign Flag   | NG/Negative/负          | PL/Positive/正          |
+     | TF   | 跟踪标志/Trace Flag  |                         |                         |
+     | IF   | 中断标志/Interrupt Flag | EI/Enable Interrupt/允许 | DI/Disable Interrupt/禁止 |
+     | DF   | 方向标志/Direction Flag | DN/Down/减少             | UP/增加                 |
+     | OF   | 溢出标志/Overflow Flag  | OV/Overflow/溢出         | NV/Not Overflow/未溢出  |
+
+

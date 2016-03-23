@@ -1,0 +1,253 @@
+#+TITLE: ATT assembly language - moving data
+#+AUTHOR: stupid_coder@163.com
+
+* 简介
+  汇编语言学习，关于数据移动部分，其中设计内存、寄存器及文件之间的数据
+  交换、读取、存储等。
+
+* Defining Data Elements
+  GNU 提供多种定义数据的方法，如 data segment 或者 bss segment。
+** The data section
+   *.data* directive 用来定义数据段， *.rodata* 数据段保存的数据都是只
+    读的。
+    其后跟着一个 *label* 字段表示数据的名称，用来在汇编程序中引用，一
+    个 *directive* 用来表明数据个类型和大小。
+    
+    #+CAPTION: directive
+    | Directive | Data Type            |
+    |-----------+----------------------|
+    | .ascii    | 文本字符串，没有\0   |
+    | .asciz    | 文本字符串，以\0结尾 |
+    | .byte     | 字节值               |
+    | .double   | 双精度               |
+    | .float    | 单精度               |
+    | .int      | 32bit 整形           |
+    | .long     | 32bit 整形           |
+    | .octa     | 16byte 整形          |
+    | .quad     | 8byte 整形           |
+    | .short    | 16bit 整形           |
+    | .single   | 单精度浮点           |
+    |-----------+----------------------|
+    | .fill     | 填充多少个字节的0    |
+
+    
+    directive 之后跟着默认的值。并且可以设置多个值，就保留多个内存空间。
+*** Defining static symbols
+   *.equ* 用来设置一个常量：
+   #+BEGIN_SRC 
+   .equ factor, 3
+   .equ LINUX_SYS_CALL 0x80
+   #+END_SRC
+   
+   在常量前使用 $ 符引用:
+   #+BEGIN_SRC 
+   movl $LINUX_SYS_CALL, %eax
+   #+END_SRC
+    
+** The bss section
+   bss 中定义的数据都是元数据(raw segments of memory)，没有具体类型，且没有初始化的实际地址，
+   只有在加载运行时才分配。
+   
+   #+CAPTION: directives in bss section
+   | Directives | Description                        |
+   |------------+------------------------------------|
+   | .comm      | 声明一个公共内存地址，并没有初始化 |
+   | .lcomm     | 声明一个局部内存地址，并没有初始化 |
+   
+   具体声明如下：
+   #+BEGIN_SRC 
+   .comm symbol, length
+   #+END_SRC
+
+   其中 symbol 为内存的符号，用来访问使用。length 为内存大小，单位为
+   bytes。
+
+   由于该内存段并没有初始化，所以在可执行程序中并不占用任何空间，只有
+   在程序加载运行时，系统动态分配。
+* Moving Data Elements
+  *MOV* 指令用来进行数据的移动，例如 内存和寄存器之间的数据移动。
+** Mov instruction formats
+   #+BEGIN_SRC 
+   movx source, destination
+   #+END_SRC
+   
+   其中，source和destination 可以是：
+   + 内存地址
+   + 内存中的数据
+   + 指令中定义的数据
+   + 寄存器
+     
+     
+   x 为数据长度：
+   + l :: 32bits long word value
+   + w :: 16bits word value
+   + b :: 8bits byte value
+
+          
+   所以针对不同的数据长度，使用不同的命令：
+   #+BEGIN_SRC 
+   movl %eax, %ebx
+   movw %ax, %bx
+   movb %al, %bl
+   #+END_SRC
+
+** mov parameters rule
+   不是上述4种数据来源，都能随意互相移动，需要遵循如下规定：
+   + 值 to 一般寄存器
+   + 值 to 内存地址
+   + 一般寄存器 to 一般寄存器
+   + 一般寄存器 to 段寄存器
+   + 段寄存器 to 一般寄存器
+   + 一般寄存器 to 控制寄存器
+   + 控制寄存器 to 一般寄存器
+   + 一般寄存器 to 调试寄存器
+   + 调试寄存器 to 一般寄存器
+   + 内存地址 to 一般寄存器
+   + 内存地址 to 段寄存器
+   + 一般寄存器 to 内存地址
+   + 段寄存器 to 内存地址
+
+     
+     
+** immediate data to registers and memory
+   立即数移动到寄存器和内存中：
+   #+BEGIN_SRC 
+   movl $0,    %eax      # moves 0 to eax
+   movl $0x80, %ebx      # moves hexadecimal to ebx
+   movl $100,  height    # moves 100 to height memory location
+   #+END_SRC
+** moving data between registers
+   8 个一般寄存器(general-purpose registers) : eax, ebx, ecx, edx,
+   edi, esi, ebp, esp.
+   
+   一般寄存器可将数据移动到任何的寄存器中，而特殊寄存器(contorl,
+   debug, segment register)只能移动数据到一般寄存器中。
+
+** moving data between memory and registers
+   在内存和寄存器间移动数据，需要格外小心，对应内存地址的变化
+*** moving data values from memory to a register
+**** label memory location
+    移动内存数据，首先要找到内存地址。可以使用 *label* 定义的标识。
+    #+BEGIN_SRC 
+    movl value, %eax
+    #+END_SRC
+**** indexed memory location    
+    索引内存地址，主要应用在一次定义多个数据时候,无法简单使用 *label*
+    标识来引用内存时使用。
+    如要由一下及部分组成：
+    + 基地址 
+    + 偏移地址，用来在基地址做偏移
+    + 单元数据大小
+    + 数据的索引
+      
+      
+    索引地址表达式：
+    #+BEGIN_QUOTE
+    base_address(offset_address, index, size)
+    =>
+    base_address + offset_address + index * size
+    #+END_QUOTE
+    
+    其中，任何一个部分是0时，可以忽略，但是 ’,‘  不能忽略。
+    *base_address* 和 *index* 必须是寄存器。
+    
+    一个简单的程序
+    #+BEGIN_SRC 
+    .section .data
+    output:
+       .asciz "The value is %d\n"
+    values:
+      .int 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60
+    .section .text
+    .globl _start
+    _start:
+          nop
+          movl $0, %edi
+    loop:
+          movl values(, %edi, 4), %eax
+          pushl %eax
+          pushl $output
+          call printf
+          addl $8, %esp
+          inc %edi
+          cmpl $11, %edi
+          jne loop
+          movl $0, %ebx
+          movl $1, %eax
+          int 0x80
+    #+END_SRC
+    
+**** indirect addressing with registers
+     register 除了可以保存一个数值，还能存储内存地址。当寄存器保存一个
+     内存地址，则称为指针(pointer)。使用指针进行内存访问，叫做间接地址
+     访问(indirect addressing)
+
+     使用 *$* 来获取一个 *label* 内存地址。
+     *(%register)* 来索引一个寄存器保存的内存。
+     *value(%register)* 来索引寄存器保存的内存地址，并且加上value的偏
+     移。
+     #+BEGIN_QUOTE
+     movl $output, %edi # 表示将output该label的地址，赋给edi寄存器
+     
+     movl %ebx, (%edi)  # 表示将寄存器ebx的值，赋给 edi 保存的内存地址
+     中。
+     
+     movl %edx, 4(%edi) # 表示将寄存器edx的值，赋给 edi 保存的内存地址
+     +4中。
+     #+END_QUOTE
+     
+     
+**** Conditional Move Instructions
+***** CMOV
+      指令格式：
+      #+BEGIN_SRC 
+      cmovx source, destination
+      #+END_SRC
+      
+      其中，x 为  1-2 个字符，用来表示符合的情况，就执行move操作。通过
+      检测当前的 *EFLAGS* 寄存器。具体如下：
+      #+CAPTION: 条件赋值
+      | EFLAGS Bit | Name          | Description                    |
+      |------------+---------------+--------------------------------|
+      | CF         | Carray Flag   | 算术计算后，进步或者借位时设置 |
+      | OF         | Overflow Flag | 一个整形出现溢出               |
+      | PF         | Parity Flag   | 奇偶校验，表示1的个数是偶数，则为1 |
+      | SF         | Sign Flag     | 正负                               |
+      | ZF         | Zero Flag     | 结果是否为0                        |
+      
+      条件判断都是成对的，并且分为两组：有符号和无符号的：
+      #+CAPTION: 无符号条件赋值
+      | Instruction Pair | Description              | EFLAGS Condition |
+      |------------------+--------------------------+------------------|
+      | CMOVA/CMOVNBE    | Above/not below or equal | (CF or ZF) = 0   |
+      | CMOVAE/CMOVNB    | Above or equal/not below | CF = 0           |
+      | CMOVNC           | Not carray               | CF = 0           |
+      | CMOVB/CMOVNAE    | Below/not above or equal | CF = 1           |
+      | CMOVC            | Carry                    | CF = 1           |
+      | CMOVBE/CMOVNA    | Below or equal/not above | (CF or ZF) = 1   |
+      | CMOVE/CMOVZ      | Equal/zero               | ZF = 1           |
+      | CMOVNE/CMOVNZ    | Not equal/not zero       | ZF = 0           |
+      | CMOVP/CMOVPE     | Parity/parity even       | PF = 1           |
+      | CMOVNP/CMOVPO    | Not parity/parity odd    | PF = 0           |
+      
+      无符号主要的检测的EFLAGS为 Carry, Zero 和 Parity Flags.
+      
+      #+CAPTION: 有符号条件赋值
+      | Instruction Pair | Description               | EFLAGSSS Condition      |
+      |------------------+---------------------------+-------------------------|
+      | CMOVGE/CMOVNL    | Greater or equal/not less | (SF xor OF) = 0         |
+      | CMOVL/CMOVNGE    | Less/not greater or equal | (SF xor OF) = 1         |
+      | CMOVLE/CMOVNG    | Less or equal/not greater | ((SF xor OF) or ZF) = 1 |
+      | CMOVO            | Overflow                  | OF = 1                  |
+      | CMOVNO           | Not overflow              | OF = 0                  |
+      | CMOVS            | Sign (negative)           | SF = 1                  |
+      | CMOVNS           | Not sign(non-negative)    | SF = 0                  |
+      
+      
+**** Data exchange instructions
+     #+CAPTION: data exchange instructions
+     | instruction | Description                                |
+     |-------------+--------------------------------------------|
+     | XCHG        | 交换两个寄存器或者一个寄存器和一个内存的值 |
+     | BSWAP       | 以反转32bits整型的字节顺序                 |
+     | XADD        | 交换两个值，并且将和存到目的操作                           |
