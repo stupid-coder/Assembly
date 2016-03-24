@@ -1,4 +1,4 @@
-#+TITLE: 硬件相关知识
+#+TITLE: professional assembly language - hardwork information
 #+OPTIONS: indent
 * 机器组成
   + Processor :: 系统CPU

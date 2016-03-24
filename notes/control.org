@@ -1,0 +1,32 @@
+#+TITLE: professional assembly language - Controlling Execution Flow
+#+AUTHOR: stupid_coder@163.com
+
+* The Instruction Pointer
+  指令指针 *EIP* 控制着CPU的指针执行位置。决定着下一个要执行的指令。
+  *EIP* 每次增加并不是说每次增加一个字节，是可以增加多个字节。
+  
+  *EIP* 并不能通过各种 *MOV* 指令进行修改，只能通过 特殊命令
+  (*Branches*) 进行更改。
+
+* Unconditional Branches
+  非条件分支，即直接跳转，修改 *EIP* 寄存器。大体分为如下3种：
+  + Jumps
+  + Calls
+  + Interrupts
+
+** Jumps
+   jump 指令格式如下：
+   #+BEGIN_SRC 
+   jmp location
+   #+END_SRC
+   其中 *location* 为内存地址。汇编中，location为 *label*。
+   
+   根据跳转的距离，Jump 指令可以分为如下3种：
+   + Short Jump :: jump的距离小于128bytes
+   + Near Jump :: 其他的jump
+   + Far Jump :: jump 到另一个代码段
+     
+     
+   
+** Calls
+   
