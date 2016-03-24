@@ -43,7 +43,7 @@
    #+BEGIN_SRC 
    movl $LINUX_SYS_CALL, %eax
    #+END_SRC
-    
+   
 ** The bss section
    bss 中定义的数据都是元数据(raw segments of memory)，没有具体类型，且没有初始化的实际地址，
    只有在加载运行时才分配。
@@ -107,8 +107,6 @@
    + 一般寄存器 to 内存地址
    + 段寄存器 to 内存地址
 
-     
-     
 ** immediate data to registers and memory
    立即数移动到寄存器和内存中：
    #+BEGIN_SRC 
@@ -196,7 +194,6 @@
      +4中。
      #+END_QUOTE
      
-     
 **** Conditional Move Instructions
 ***** CMOV
       指令格式：
@@ -243,11 +240,139 @@
       | CMOVS            | Sign (negative)           | SF = 1                  |
       | CMOVNS           | Not sign(non-negative)    | SF = 0                  |
       
-      
 **** Data exchange instructions
      #+CAPTION: data exchange instructions
      | instruction | Description                                |
      |-------------+--------------------------------------------|
      | XCHG        | 交换两个寄存器或者一个寄存器和一个内存的值 |
      | BSWAP       | 以反转32bits整型的字节顺序                 |
-     | XADD        | 交换两个值，并且将和存到目的操作                           |
+     | XADD        | 交换两个值，并且将和存到目的操作           |
+     | CMPXCHG     | 比较参数与外部数据                         |
+     | CMPXCHG8B   | 比较两个8bytes的数据，与其他数据交换       |
+***** XCHG
+      XCHG: 交换两个寄存器或者寄存器和内存之间的数据。
+      #+BEGIN_SRC
+      xchg operand1, operand2
+      #+END_SRC
+     
+      其中 operand1 和 operand2 不能都是内存，必须包含一个寄存器。
+      如果使用内存地址的话，CPU会对内存进行加锁 lock，保证原子性。
+
+***** BSWAP
+      BSWAP: 用于 bytes 级别字节顺序交换。
+      + Bits 0-7 与 Bits 24-31 交换
+      + Bits 8-15 与 Bits 16-23 交换
+***** XADD
+      XADD: 用于交换两个寄存器或者一个内存和一个寄存器之间的值, 并且会
+      得到他们的和,存放到目的地址中.
+      #+BEGIN_SRC 
+      xadd source, destination
+      #+END_SRC
+***** CMPXCHG
+      CMPXCHG 会将 *destination operand*  和 EAX,AX,AL进行比较,如果相
+      等,将 *source operand* 值存储到 *destination* 中.
+      #+BEGIN_SRC 
+      cmpxchg source, destination
+      #+END_SRC
+***** CMPXCHG8B
+      CMPXCHG8B 将 EAX 和 EDX 组成的 8 bytes 与 destination进行比较，
+      如果想等，则将ECX：EBX 数据存储到 EDX：EAX中。或则将ECX：EBX存储
+      到destination中
+      #+BEGIN_SRC 
+      cmpxchg8b destination
+      #+END_SRC
+      
+* Stack
+  栈为函数调用顺序存储，局部变量存储的位置。在汇编编程中具有重要的作用
+** How the stack works
+   我们知道 数据段 是在低地址向高地址分配。而 *stack* 正好相反。从高地
+   址向低地址空间分配空间。
+   寄存器 *ESP* 用于追踪stack栈顶，及当前栈的最低地址。
+   
+*** PUSHing and POPing data
+   将数据放到栈中的指令称为：PUSH
+   #+BEGIN_SRC 
+   pushx source
+   #+END_SRC
+   其中，x 为数据长度, l 表示为long word-32bits； w 表示为word-16bits。source为将要放到栈中的数据，push允许的数据类型
+   如下：
+   + 16-bits register values
+   + 32-bits register values
+   + 16-bits memory values
+   + 32-bits memory values
+   + 16-bits segment registers
+   +  8-bits immediate data values
+   + 16-bits immediate data values
+   + 32-bits immediate data values
+   
+     
+   将数据从栈中抽取的指令：POP
+   #+BEGIN_SRC 
+   popx destination
+   #+END_SRC
+   
+   例子：
+   #+BEGIN_SRC 
+   .section .data
+   data:
+        .int  125
+        .section .text
+        .globl _start
+   _start:
+        nop
+        movl $24420, %ecx
+        movw $350, %bx
+        movb $100, %al
+        pushl %ecx
+        pushw %bx
+        pushl %eax
+        pushl data
+        pushl $data
+
+
+        popl %eax
+        popl %eax
+        popl %eax
+        popw %ax
+        popl %eax
+        movl $0, %ebx
+        movl $1, %eax
+        int $0x80
+   #+END_SRC
+
+**** PUSHing and POPing all Registers
+    #+CAPTION: PUSHing and POPing All Registers instructions
+    | Instruction  | Description                                  |
+    |--------------+----------------------------------------------|
+    | PUSHA/POPA   | PUSH or POP 所有16bits general-purpose寄存器 |
+    | PUSHAD/POPAD | PUSH or POP 所有32bits general-purpose寄存器 |
+    | PUSHF/POPF   | PUSH or POP EFLAGS的低16bits                 |
+    | PUSHFD/POPFD | PUSH or POP EFLAGS的32bits                   |
+
+    寄存器push顺序：EDI, ESI, EBP, EBX, EDX, ECX, EAX.
+    
+    
+*** Optimizing Memory Access
+    内存访问在CPU操作中为较慢的操作。
+    
+    由于CPU具有cache用来缓存需要读入的数据，所以数据的读入，要保证操作
+    的数据存储在一起。
+    
+    并且cache block为64bits，所以一个数据如果位于横跨64bits的内存空间
+    这哦功能，则cache读取将会读取两次。
+
+    优化方法如下：
+    + 16-bits的数据，对其16-bytes
+    + 32-bits的数据，基地址与4-bytes对其
+    + 64-bits的数据，基地址与8-bytes对其
+    + 避免多个小块数据传输
+    + 避免使用大数据格式例如 80- 和 128-bit数据
+      
+      
+    
+      
+
+      
+
+    
+    
