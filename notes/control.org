@@ -1,6 +1,6 @@
 #+TITLE: professional assembly language - Controlling Execution Flow
 #+AUTHOR: stupid_coder@163.com
-
+#+STARTUP: indent
 * The Instruction Pointer
   指令指针 *EIP* 控制着CPU的指针执行位置。决定着下一个要执行的指令。
   *EIP* 每次增加并不是说每次增加一个字节，是可以增加多个字节。
@@ -113,3 +113,85 @@ overwhere:
    | JS          | Jump if sign                 | SF = 1             |
    | JZ          | Jump if zero                 | ZF = 1             |
        
+   其中，只有 *near jump* 和 *short jump* 可以支持条件跳转。
+** The compare instructions
+   用来比较的指令，会修改EFLAGS寄存器。基本语法：
+   #+BEGIN_SRC 
+   cmp operand1, operand2
+   #+END_SRC
+   
+   *cmp* 意思为 *operand2 - operand1*，其中每一个参数都不会修改，只会
+   根据结果修改EFLAGS寄存器。
+   
+*** flag bits - explanation
+**** Zero Flag
+     *Zero Flag* 在结果等于0时会被设置。
+     
+     *JZ* 和 *JE* 在 ZF 设置时，都会进行跳转。
+
+     ZF 会被 *CMP* 指令和 *Mathmatical Instructions* 改变。
+     
+**** Overflow Flag
+     在有符号算数计算情况下，结果超过类型的最大和最小时，会设置 OF 寄
+     存器。
+     #+BEGIN_SRC 
+     movl $1, %eax
+     movb $0x71, %bl
+     addb $10, %bl
+     jo overwhere
+     int $0x80
+     overwhere:
+       movl $0, %ebx
+       int $0x80
+     #+END_SRC
+
+     byte的范围为 -128 - 127, 故会触发Over Flag
+**** Parity Flag
+     *Parity Flag* 用来标识计算结果中 1 bits的个数。 如果为偶数个，则
+     PF将会被设置。如果为奇数个，则不会设置该flag位。
+**** Sign Flag
+     *Sign Flag* 用来标识是否是正数。一个有符号的整形，最高位表示为符
+     号位。0表示正数，1表示负数。
+**** Carry Flag
+     *Carry Flag* 用来标识无符号算术计算结果是否出现了溢出。Carry Flag
+     用来标识一个计算结果是否超过了数据类型的范围。
+     
+     其中， *DEC* 和 *INC* 指令并不影响进位标识位设置。
+     
+     同时 进位标识位会在无符号的整形小于0的时候设置。
+
+     CF 标识位可以通过如下指令修改：
+     #+CAPTION: 修改 CF 标识位的指令
+     | Instruction | Description                                                           |
+     |-------------+-----------------------------------------------------------------------|
+     | CLC         | Clear the Carry Flag                                                  |
+     | CMC         | Complement the Carry Flag ( change it to the opposite of what is set) |
+     | STC         | Set the Carry Flag                                                    | 
+  
+** Loops 
+循环为另外一种改变程序运行的方法.
+*** Loop Instructions
+*LOOP* 指令使用 *ECX* 寄存器作为计数器, 类似 C/C++ 的 for循环.
+#+CAPTION: LOOP 指令家族
+| Instruction   | Description                                                    |
+|---------------+----------------------------------------------------------------|
+| LOOP          | Loop until the ECX register is zero                            |
+| LOOPE/LOOPZ   | Loop until the ECX register is zero, or the ZF flag is not set |
+| LOOPNE/LOOPNZ | Loop unitl the ECX register is zeor, or the ZF flag is set     |
+
+LOOP 基本语法:
+#+BEGIN_SRC 
+loop address
+#+END_SRC
+其中,address为label. 并且 LOOP 仅支持8bit偏移.即支持short jump.
+并且 LOOP 对与ECX的DEC操作,并不会影响EFLAGS中ZERO FLAG.
+*** Preventing LOOP catastrophes
+LOOP 语义会先对ECX做一次DEC后,才会检测ECX是否等于0.所以在设置ECX时需要
+额外小心.一旦ECX设置为0,并不代表不执行,而是要从0到-1,然后执行到OF设置
+为止.
+
+
+* Duplicating High-Level Conditional Branches
+高级语言的汇编实现.
+** if statements
+
