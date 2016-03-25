@@ -13,7 +13,6 @@
   + Jumps
   + Calls
   + Interrupts
-
 ** Jumps
    jump 指令格式如下：
    #+BEGIN_SRC 
@@ -26,7 +25,91 @@
    + Near Jump :: 其他的jump
    + Far Jump :: jump 到另一个代码段
      
-     
-   
 ** Calls
+   Calls 与 Jump差不多，但是Calls会记录跳转之前的位置，能够返回。
    
+   CALL 指令会在跳到对应位置之前，将 当前的EIP存储到stack中，然后跳转
+   到对应位置运行， RET 指令会通过stack中存储的原先EIP值，调回原有位置
+   继续运行。
+   #+BEGIN_SRC 
+        .section .data
+output:
+        .asciz "This is section %d\n"
+        .section .text
+        .globl _start
+_start:
+        pushl $1
+        pushl $output
+        call printf
+        add $8, %esp
+        call overwhere
+        pushl $3
+        pushl $output
+        call printf
+        add $8, %esp
+        pushl $0
+        call exit
+overwhere:
+        pushl %ebp
+        movl %esp, %ebp
+        pushl $2
+        pushl $output
+        call printf
+        add $8, %esp
+        movl %ebp, %esp
+        popl %ebp
+        ret
+   #+END_SRC
+** Interrupts
+   中断(Interrupt)根据中断类型分为：
+   + Software Interrupts :: 软件产生的中断，如 *int $0x80* 用于进入内核态。
+   + Hardware Interrupts :: 硬件级别的中断，如发生除0错误，内存页中断
+        等。
+
+* Conditional Branches
+  条件分支，通过判断 EFLAGS 寄存器状态来判断是否进行分支跳转。
+  EFLAGS 需要判断的5个bits：
+  + Carray Flag(CF) - bit 0 :: 进位标识
+  + Overflow Flag(OF) - bit 11 :: 溢出标识
+  + Parity Flag(PF) - bit  2 :: 奇偶标识
+  + Sign Flag(SF) - bit 7 :: 正负标识
+  + Zero Flag(ZF) - bit 6 :: 零标识
+
+       
+** Conditional Jump Instructions
+   #+CAPTION: Conditional Jump Instructions
+   | Instruction | Description                  | EFLAGS             |
+   |-------------+------------------------------+--------------------|
+   | JA          | Jump if above                | CF = 0 And ZF = 0  |
+   | JAE         | Jump if above or equal       | CF = 0             |
+   | JB          | Jump if below                | CF = 1             |
+   | JBE         | Jump if below or equal       | CF = 1 or ZF = 1   |
+   | JC          | Jump if carry                | CF = 1             |
+   | JCXZ        | Jump if cx register is 0     |                    |
+   | JECXZ       | Jump if ecx register is 0    |                    |
+   | JE          | Jump if equal                | ZF = 1             |
+   | JG          | Jump if greater              | ZF = 0 and SF = OF |
+   | JGE         | Jump if greater or equal     | SF = OF            |
+   | JL          | Jump if less                 | SF <> OF           |
+   | JLE         | Jump if less or equal        | ZF = 1 or SF <> OF |
+   | JNA         | Jump if not above            | CF = 1 or ZF = 1   |
+   | JNAE        | Jump if not above or equal   | CF = 1             |
+   | JNB         | Jump if not below            | CF = 0             |
+   | JNBE        | Jump if not below or euqal   | CF = 0 and ZF = 0  |
+   | JNC         | Jump if not carry            | CF = 0             |
+   | JNE         | Jump if not equal            | ZF = 0             |
+   | JNG         | Jump if not greater          | ZF = 1 or SF <> OF |
+   | JNGE        | Jump if not greater or equal | SF <> OF           |
+   | JNL         | Jump if not less             | SF = OF            |
+   | JNLE        | Jump if not less or equal    | ZF = 0 and SF = OF |
+   | JNO         | Jump if not overflow         | OF = 0             |
+   | JNP         | Jump if not parity           | PF = 0             |
+   | JNS         | Jump if no sign              | SF = 0             |
+   | JNZ         | Jump if not zero             | ZF = 0             |
+   | JO          | Jump if overflow             | OF = 1             |
+   | JP          | Jump if parity               | PF = 1             |
+   | JPE         | Jump if parity event         | PF = 1             |
+   | JPO         | Jump if parity odd           | PF = 0             |
+   | JS          | Jump if sign                 | SF = 1             |
+   | JZ          | Jump if zero                 | ZF = 1             |
+       
